@@ -1,0 +1,56 @@
+name: Build TV Box APK
+
+on:
+  push:
+    branches: [ main, master ] # 当推送到主分支时触发
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FLUTTER_VERSION: "3.19.0" # 与项目兼容的稳定版本
+      MIN_SDK_VERSION: 21       # 兼容 Android 5.0+ (电视盒子安全)
+      TARGET_ABI: armeabi-v7a   # 你的设备架构
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: stable
+
+    - name: Configure Android Build
+      run: |
+        # 1. 强制设置 32 位 ARM 构建
+        echo "android.defaultConfig.ndk.abiFilters += ['armeabi-v7a']" >> android/app/build.gradle
+        
+        # 2. 确保 minSdkVersion 兼容
+        sed -i "s/minSdkVersion .*/minSdkVersion ${MIN_SDK_VERSION}/" android/app/build.gradle
+        
+        # 3. 清理可能存在的 64 位库 (关键!)
+        echo "android.packagingOptions {" >> android/app/build.gradle
+        echo "  exclude 'lib/arm64-v8a/libijkffmpeg.so'" >> android/app/build.gradle
+        echo "  exclude 'lib/arm64-v8a/libijkplayer.so'" >> android/app/build.gradle
+        echo "  exclude 'lib/arm64-v8a/libijksdl.so'" >> android/app/build.gradle
+        echo "}" >> android/app/build.gradle
+
+    - name: Build Release APK
+      run: |
+        flutter clean
+        flutter pub get
+        flutter build apk \
+          --release \
+          --target-platform=android-arm \  # 唯一指定 32 位 ARM
+          --split-per-abi \
+          --dart-define=FLUTTER_BUILD_MODE=release
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: tv-box-apk
+        path: build/app/outputs/flutter-apk/app-*-release.apk
+        retention-days: 7
