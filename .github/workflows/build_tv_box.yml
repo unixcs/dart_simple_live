@@ -1,4 +1,4 @@
-name: tv-apk-build-action-dev
+name: tv-apk-build-arv8
 
 on:
   workflow_dispatch:
