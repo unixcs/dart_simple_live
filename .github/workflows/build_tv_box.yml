@@ -7,7 +7,6 @@ on:
       - 'dev'
 
 jobs:
-  # 只打包 Android TV APK
   build-tv-apk:
     runs-on: macos-latest
 
@@ -54,18 +53,27 @@ jobs:
           echo "keyPassword=${{ secrets.TV_KEY_PASSWORD }}" >> simple_live_tv_app/android/key.properties
           echo "keyAlias=${{ secrets.TV_KEY_ALIAS }}" >> simple_live_tv_app/android/key.properties
 
-      # 针对你的设备优化：只构建 armeabi-v7a 架构
-      - name: Build TV APK for Armeabi-v7a
+      # 构建APK
+      - name: Build TV APK
         run: |
           cd simple_live_tv_app
           flutter build apk --release --target-platform=android-arm
 
-      #上传TV APK至Artifacts
+      # 检查构建输出
+      - name: Check build outputs
+        run: |
+          echo "构建输出目录内容:"
+          ls -la simple_live_tv_app/build/app/outputs/flutter-apk/
+          echo "APK文件:"
+          find simple_live_tv_app/build -name "*.apk" -type f
+
+      # 上传APK文件
       - name: Upload TV APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android_tv_armeabi_v7a
-          path: simple_live_tv_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          name: android_tv_apk
+          path: simple_live_tv_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
       #完成
-      - run: echo "✅ "
+      - run: echo "✅ TV APK build OK ."
